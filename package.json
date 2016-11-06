@@ -1,0 +1,37 @@
+{
+  "name": "compta",
+  "version": "1.0.0",
+  "description": "Personnal Accounting From JSON Files",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "./node_modules/.bin/mocha",
+    "less": "./node_modules/.bin/lessc ./style.less > style.css"
+  },
+  "keywords": [
+    "Electron",
+    "quick",
+    "start",
+    "tutorial",
+    "demo"
+  ],
+  "author": "Guillaume Pasquet",
+  "license": "CC0-1.0",
+  "devDependencies": {
+    "electron": "^1.4.1"
+  },
+  "dependencies": {
+    "babel-standalone": "^6.17.0",
+    "csv-parse": "^1.1.7",
+    "dialogs": "^1.1.15",
+    "json-beautify": "^1.0.1",
+    "moment": "^2.15.1",
+    "react": "^15.3.2",
+    "react-bootstrap": "^0.30.5",
+    "react-d3-basic": "^1.6.11",
+    "react-datepicker": "^0.32.0",
+    "react-dates": "^3.3.4",
+    "react-dom": "^15.3.2",
+    "uuid": "^2.0.3"
+  }
+}
