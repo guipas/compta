@@ -5,12 +5,18 @@ const Book = compta.SingleEntryBook;
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
-const {dialog, Menu, MenuItem, app} = require('electron').remote;
+const remote = require('electron').remote;
+const dialog = remote.dialog;
+const Menu = remote.Menu;
+const MenuItem = remote.MenuItem;
+const app = remote.app;
+
+// const {dialog, Menu, MenuItem, app} = require('electron').remote;
 var Chart = require('react-d3-core').Chart;
 var Dialogs = require('dialogs');
 var dialogs = Dialogs();
 // require `react-d3-basic` for Line chart component.
-var LineChart = require('react-d3-basic').LineChart;
+// var LineChart = require('react-d3-basic').LineChart;
 var rd3 = require('rd3');
 var PieChart = rd3.PieChart
 
@@ -24,11 +30,14 @@ const Button = ReactBootstrap.Button;
 const OverlayTrigger = ReactBootstrap.OverlayTrigger;
 const Tooltip = ReactBootstrap.Tooltip;
 
-// const ReactDates = require('react-dates');
-// const DateRangePicker = ReactDates.DateRangePicker;
 const DatePicker = require(`react-datepicker`);
 
 let mainBook = new Book();
+
+const debug = true;
+function say(something) {
+  if (debug) console.log(something);
+}
 
 
 class BookEntries extends React.Component {
@@ -39,7 +48,7 @@ class BookEntries extends React.Component {
     this.state = {
       entries : props.book.entries,
       dateSortDirection : 1,
-      categories : [],
+      categories : this.sortCategories(props.book.getCategories()),
       filteredCategory : ``,
     };
 
@@ -51,18 +60,26 @@ class BookEntries extends React.Component {
     this.changeCategory = this.changeCategory.bind(this);
     this.filterCategory = this.filterCategory.bind(this);
     this.renderFilterCategory = this.renderFilterCategory.bind(this);
+    this.sortCategories = this.sortCategories.bind(this);
   }
 
   componentDidMount() {
+    // console.log(`Book entries mounted`);
+
   }
 
-  componentWillReceiveProps(nextProps) {
-    let categories = nextProps.book.getCategories();
-    categories = categories.sort((a,b) => {
+  sortCategories(categories) {
+    return categories.sort((a,b) => {
       if(a.toLowerCase() < b.toLowerCase()) return -1;
       if(a.toLowerCase() > b.toLowerCase()) return 1;
       return 0;
     });
+  }
+
+  componentWillReceiveProps(nextProps) {
+    console.log(nextProps);
+    let categories = nextProps.book.getCategories();
+    categories = this.sortCategories(categories);
     this.setState({
       entries : nextProps.book.entries,
       categories,
@@ -70,20 +87,15 @@ class BookEntries extends React.Component {
   }
 
   renderCategoriesOptions(addNew = true) {
-    const options = this.state.categories.map(category => {
-      return (
-        <option value={category}>
-          {category}
-        </option>)
-    })
-    if (addNew) options.push((<option value="addNewCategory">create...</option>));
+    const options = this.state.categories.map((category,i) => {
+      return React.createElement(`option`, { key : i, value : category }, category);
+    });
+    if (addNew) options.push(React.createElement(`option`, { key : `addnew`, value : `addNewCategory`}, `Create...`));
     return options;
   }
 
 
   changeCategory(entryId, event) {
-    // console.log(event.target);
-    // console.log(event.target.value);
     let newCategory = event.target.value;
     if (newCategory === `addNewCategory`) {
       dialogs.prompt(`Name of the new category : `, (newCategory) => {
@@ -101,26 +113,44 @@ class BookEntries extends React.Component {
     if (!this.state || !this.state.entries) return null;
     return this.state.entries.map((entry, i) => {
       if (this.props.startDate && this.props.endDate && !moment(entry.date).isBetween(this.props.startDate, this.props.endDate)) return;
-      if (this.state.filteredCategory !== `` && this.state.filteredCategory !== entry.category) return;
-      const tooltip = (<Tooltip className="tooltip">{entry.label}</Tooltip>);
-      return (
-        <Row key={i}>
-          <Col xs={6} className="entry-date">
-            {moment(entry.date).format('DD/MM/YYYY')}
-            <div className="entry-name">
-              <OverlayTrigger placement="bottom" overlay={tooltip}>
-                <span>{entry.label.slice(0,28)}{entry.label.length > 28 ? `...` : ``}</span>
-              </OverlayTrigger>
-            </div>
-          </Col>
-          <Col xs={4} className="entry-category" >
-            <select value={entry.category} onChange={this.changeCategory.bind(this, entry.id)}>
-              {this.renderCategoriesOptions()}
-            </select>
-
-          </Col>
-          <Col xs={2} className="entry-amount">{entry.amount.toFixed(2)}</Col>
-        </Row>
+      if (this.state.filteredCategory !== `` &&  entry.category.indexOf(this.state.filteredCategory) !== 0) return;
+      // if (this.state.filteredCategory !== `` && this.state.filteredCategory !== entry.category) return;
+      // const tooltip = (<Tooltip className="tooltip" id="entry-tooltip-{i}">{entry.label}</Tooltip>);
+      const tooltip = React.createElement(Tooltip, { className : `tooltip`, id : `entry-tooltip-${i}`}, entry.label);
+      const entryDate = React.createElement(
+        Col,
+        { xs : 6, className : `entry-date` },
+        moment(entry.date).format('DD/MM/YYYY'),
+        React.createElement(
+          `div`,
+          { className : `entry-name` },
+          React.createElement(
+            OverlayTrigger,
+            { placement : `bottom`, overlay : tooltip },
+            React.createElement(`span`, null, entry.label.slice(0,28), entry.label.length > 28 ? `...` : ``),
+          )
+        )
+      );
+      const entryCategory = React.createElement(
+        Col,
+        { xs : 4, className : `entry-category`},
+        React.createElement(
+          `select`,
+          { value : entry.category, onChange : this.changeCategory.bind(this, entry.id) },
+          this.renderCategoriesOptions(),
+        )
+      );
+      const entryAmount = React.createElement(
+        Col,
+        { xs : 2, className : `entry-amount` },
+        entry.amount.toFixed(2),
+      )
+      return React.createElement(
+        Row,
+        null,
+        entryDate,
+        entryCategory,
+        entryAmount,
       );
     })
   }
@@ -154,7 +184,7 @@ class BookEntries extends React.Component {
 
   renderFilterCategory() {
     const options = this.renderCategoriesOptions(false);
-    options.unshift((<option value="">Tout</option>));
+    options.unshift((<option key="all" value="">Tout</option>));
     return (
       <select onChange={this.filterCategory}>
         {options}
@@ -173,10 +203,9 @@ class BookEntries extends React.Component {
         <Grid>
           <Row className="sub-nav">
             <Col xs={12}>
-              <ButtonToolbar>
-                <Button onClick={this.onClickBalance}><Glyphicon glyph="piggy-bank" /> Balance</Button>
-                {this.renderFilterCategory()}
-              </ButtonToolbar>
+                <a onClick={this.onClickBalance}><Glyphicon glyph="piggy-bank" /> Balance</a>
+                &nbsp;|&nbsp;
+                <span>Categories : </span>{this.renderFilterCategory()}
             </Col>
           </Row>
         </Grid>
@@ -189,19 +218,83 @@ class BookEntries extends React.Component {
   }
 }
 
+class AppMenu extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+
+  render() {
+    return React.createElement(`div`, { id : `menu` });
+  }
+}
+
+class AppMenuIcon extends React.Component {
+  constructor(props) {
+    super(props);
+
+    this.handleClick = this.handleClick.bind(this);
+  }
+
+  handleClick() {
+    if (this.props.onClick) this.props.onClick();
+  }
+
+  render() {
+    return React.createElement(`div`, { id : `menu-icon`, onClick : this.handleClick });
+  }
+
+}
+
 class Balance extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       total : props.balance.reduce((prev, curr) => prev + curr.amount, 0),
+      categories : this.sortCategories(props.book.getCategories()),
+      filteredCategory : ``,
     }
     this.renderList = this.renderList.bind(this);
     this.onClickBack = this.onClickBack.bind(this);
+    this.sortCategories = this.sortCategories.bind(this);
+    this.renderCategoriesOptions = this.renderCategoriesOptions.bind(this);
+    this.renderFilterCategory = this.renderFilterCategory.bind(this);
+    this.filterCategory = this.filterCategory.bind(this);
+  }
+
+  sortCategories(categories) {
+    return categories.sort((a,b) => {
+      if(a.toLowerCase() < b.toLowerCase()) return -1;
+      if(a.toLowerCase() > b.toLowerCase()) return 1;
+      return 0;
+    });
   }
 
   componentWillReceiveProps(nextProps) {
     const total  = nextProps.balance.reduce((prev, curr) => prev + curr.amount, 0);
+    const categories = this.sortCategories(nextProps.book.getCategories());
+
     this.setState({total});
+  }
+
+  renderCategoriesOptions() {
+    const options = this.state.categories.map((category,i) => {
+      return React.createElement(`option`, { key : i, value : category }, category);
+    });
+    return options;
+  }
+
+  filterCategory(event) {
+    this.setState({ filteredCategory : event.target.value })
+  }
+
+  renderFilterCategory() {
+    const options = this.renderCategoriesOptions(false);
+    options.unshift((<option key="all" value="">Tout</option>));
+    return (
+      <select onChange={this.filterCategory}>
+        {options}
+      </select>
+    )
   }
 
   renderList() {
@@ -213,6 +306,7 @@ class Balance extends React.Component {
     });
     const balance = this.props.balance.sort((a,b) => b.amount - a.amount);
     return balance.map((line, i) => {
+      if (line.level !== 0 && !this.state.filteredCategory || this.state.filteredCategory && line.category.indexOf(this.state.filteredCategory) !== 0) return;
       const classNames = `balance level-${line.level}`;
       const blanks = new Array(maxChars - Math.abs(line.amount).toFixed(0).length);
       blanks.fill(<span>&nbsp;</span>);
@@ -239,9 +333,8 @@ class Balance extends React.Component {
         <Grid>
           <Row className="sub-nav">
             <Col xs={12}>
-              <ButtonToolbar>
-                <Button onClick={this.onClickBack}><Glyphicon glyph="menu-left" /> Back</Button>
-              </ButtonToolbar>
+                <a onClick={this.onClickBack}><Glyphicon glyph="menu-left" /> Back</a>
+                {this.renderFilterCategory()}
             </Col>
           </Row>
         </Grid>
@@ -301,23 +394,29 @@ class App extends React.Component {
 
     utils.setAppMenu.bind(this)();
 
-    this.handleBalanceClickBack = this.handleBalanceClickBack.bind(this);
-    this.parseFromIng = this.parseFromIng.bind(this);
-    this.balance = this.balance.bind(this);
-    this.renderNav = this.renderNav.bind(this);
-    this.handleChangeStart = this.handleChangeStart.bind(this);
-    this.handleChangeEnd = this.handleChangeEnd.bind(this);
+    this.handleBalanceClickBack   = this.handleBalanceClickBack.bind(this);
+    this.parseFromIng             = this.parseFromIng.bind(this);
+    this.balance                  = this.balance.bind(this);
+    this.renderNav                = this.renderNav.bind(this);
+    this.handleChangeStart        = this.handleChangeStart.bind(this);
+    this.handleChangeEnd          = this.handleChangeEnd.bind(this);
     this.handleChangeItemCategory = this.handleChangeItemCategory.bind(this);
-    this.openBook = this.openBook.bind(this);
-    this.save = this.save.bind(this);
-    this.saveAs = this.saveAs.bind(this);
-    this.saveConfig = this.saveConfig.bind(this);
-    this.loadConfig = this.loadConfig.bind(this);
-    this.importEntries = this.importEntries.bind(this);
+    this.openBook                 = this.openBook.bind(this);
+    this.save                     = this.save.bind(this);
+    this.saveAs                   = this.saveAs.bind(this);
+    this.saveConfig               = this.saveConfig.bind(this);
+    this.loadConfig               = this.loadConfig.bind(this);
+    this.importEntries            = this.importEntries.bind(this);
+    this.refresTitle              = this.refresTitle.bind(this);
 
     this.config = {};
 
-    app.on('will-quit', this.saveConfig);
+    // app.on('will-quit', this.saveConfig);
+    const currentWindow = remote.getCurrentWindow();
+    currentWindow.on(`close`, () => {
+      this.saveConfig();
+      // currentWindow = null;
+    });
 
   }
 
@@ -340,65 +439,89 @@ class App extends React.Component {
         // mainBook = compta.parseING(fileName);
         const content  = fs.readFileSync(fileName, `utf8`);
         const mainBook = compta.importers.ing_csv(content);
-        this.setState({book : mainBook, balance : null, currentFileName : fileName,});
+        this.setState({book : mainBook, balance : null, currentFileName : false,});
         //ReactDOM.render(<App book={mainBook}/>, document.getElementById('app'));
+        this.refresTitle();
       });
     } else {
       fileName = file;
       const content  = fs.readFileSync(fileName, `utf8`);
       const mainBook = compta.importers.ing_csv(content);
       //ReactDOM.render(<App book={mainBook}/>, document.getElementById('app'));
-      this.setState({book : mainBook, balance : null, currentFileName : fileName,});
+      this.setState({book : mainBook, balance : null, currentFileName : false,});
+      this.refresTitle();
     }
   }
 
+  refresTitle() {
+    var fileName = this.state.currentFileName;
+    if (!fileName) fileName = 'Compta';
+    document.querySelector('title').innerHTML = `Compta - ${path.basename(fileName)}`;
+  }
+
   openBook(file) {
+    say(`### Opening Book ${file}`);
     if (!file) {
       dialog.showOpenDialog(fileNames => {
         if (!fileNames){
-          console.log("Unable to open file");
+          say("No files selected");
           return;
         }
         const fileName = fileNames.pop();
         const book = new Book();
+        say(`Loading ${fileName}`);
         book.load(fs.readFileSync(fileName, `utf8`));
+        say(`Loaded`);
         this.setState({
           book,
           balance : false,
           currentFileName : fileName,
         });
-        document.querySelector('title').innerHTML = `Compta - ${fileName}`;
+        this.refresTitle();
       });
     } else {
-      if (!fs.existsSync(file)) return;
+      if (!fs.existsSync(file)) {
+        say(`Given File does not exists, aborting...`);
+        return;
+      }
       const book = new Book();
+      say(`Loading ${file}`);
       book.load(fs.readFileSync(file, `utf8`));
+      say(`Loaded`);
       this.setState({
         book,
         balance : false,
         currentFileName : file,
       });
-      document.querySelector('title').innerHTML = `Compta - ${file}`;
+      this.refresTitle();
     }
+    say(`### End opening book`);
   }
 
   saveConfig() {
+    say(`### Saving config...`);
     if (this.state.currentFileName) this.config.lastOpenedFile = this.state.currentFileName;
+    else this.config.lastOpenedFile = null;
     fs.writeFileSync(path.join(__dirname, `compta-config.json`), JSON.stringify(this.config));
+    say(`### Config saved`);
   }
 
   loadConfig() {
+    say(`### Loading configuration...`);
     const config = fs.readFileSync(path.join(__dirname, `compta-config.json`), `utf8`);
+    say(config);
     if (config) {
       try { this.config = JSON.parse(config) }
       catch (e) {
-        console.log(e);
+        say(e);
         this.config = {};
       }
     }
     if (this.config.lastOpenedFile) {
+      say(`Opening Last File...`);
       this.openBook(this.config.lastOpenedFile);
     }
+    say(`### Configuration loaded...`);
   }
 
   save(forceDialog = false) {
@@ -414,6 +537,10 @@ class App extends React.Component {
     dialog.showSaveDialog(fileName => {
       if (!fileName) return;
       fs.writeFileSync(fileName, this.state.book.save());
+      this.setState({
+        currentFileName : fileName,
+      });
+      this.refresTitle();
     })
   }
 
@@ -434,13 +561,14 @@ class App extends React.Component {
       const fileName = fileNames.pop();
       const importBook = new Book();
       importBook.load(fs.readFileSync(fileName, `utf8`));
-      const book = state.book;
+      const book = this.state.book;
       book.mergeBook(importBook);
       this.setState({
         book,
         balance : false,
         currentFileName : false,
       });
+      this.refresTitle();
     });
   }
 
@@ -453,6 +581,7 @@ class App extends React.Component {
 
   handleBalanceClickBack() {
     this.setState({ balance : null });
+    console.log(this.state.book);
   }
 
   handleChangeStart(date) {
@@ -479,7 +608,7 @@ class App extends React.Component {
       <Grid>
         <Row className="main-nav">
           <Col className="nav-date">
-            Période du <br/>
+            Période du
             <DatePicker
               dateFormat="DD/MM/YYYY"
               selected={this.state.startDate}
@@ -504,16 +633,26 @@ class App extends React.Component {
     let balance = '';
     let entries = '';
 
-    if (this.state.book && !this.state.balance) entries = (<BookEntries startDate={this.state.startDate} endDate={this.state.endDate} onClickBalance={this.balance} book={this.state.book} onChangeItemCategory={this.handleChangeItemCategory}></BookEntries>);
-    if (this.state.balance) balance = (<Balance startDate={this.state.startDate} endDate={this.state.endDate}  onClickBack={this.handleBalanceClickBack} balance={this.state.balance}></Balance>);
-    // if (this.props.balance) balance = (<BalanceChart balance={this.props.balance}></BalanceChart>);
+    if (this.state.book && !this.state.balance) {
+      entries = React.createElement(BookEntries, {
+        startDate            : this.state.startDate,
+        endDate              : this.state.endDate,
+        onClickBalance       : this.balance,
+        book                 : this.state.book,
+        onChangeItemCategory : this.handleChangeItemCategory,
+      });
+    }
+    if (this.state.balance) {
+      balance = React.createElement(Balance, {
+        startDate   : this.state.startDate,
+        endDate     : this.state.endDate,
+        onClickBack : this.handleBalanceClickBack,
+        balance     : this.state.balance,
+        book        : this.state.book,
+      });
+    }
 
-    return (
-      <div>
-        {this.renderNav()}
-        {balance}
-        {entries}
-      </div>);
+    return React.createElement(`div`, null, this.renderNav(), balance, entries, React.createElement(AppMenu));
   }
 }
 

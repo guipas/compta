@@ -5,6 +5,8 @@ body {
 }
 
 .main-nav {
+  margin-top : 20px;
+  
   .nav-date {
     text-align: center;
 
@@ -19,6 +21,8 @@ body {
 }
 
 #book-entries {
+  margin-top: 20px;
+
   .row {
     // max-height: 15px;
     overflow: hidden;
@@ -34,8 +38,6 @@ body {
       max-height: 32px;
       line-height: 14px;
     }
-
-
 
     div.entry-date {
       font-family: monospace;
@@ -92,30 +94,55 @@ body {
     div.entry-date {
     }
   }
-}
 
-.balance {
-  .category {
-    text-align: right;
-  }
-  .amount {
-    text-align: left;
-    font-family: monospace;
-    .ratio-bar {
-      height : 6px;
-      width: 11%;
-      z-index: 10000;
-      position: absolute;
-      bottom: 0;
-      left: 0;
 
-      &.gain {
-        background : green;
+  .balance {
+    > div {
+      max-height: 52px;
+      line-height: 25px;
+    }
+
+
+    .category {
+      text-align: right;
+    }
+    .amount {
+      text-align: left;
+      font-family: monospace;
+      .ratio-bar {
+        height : 6px;
+        width: 11%;
+        z-index: 10000;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+
+        &.gain {
+          background : green;
+        }
+        &.loss {
+          background: red;
+        }
       }
-      &.loss {
-        background: red;
-      }
-  }
 
     }
+  }
+}
+
+#menu {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left : -100%;
+  transition: all 500ms;
+
+  &.active {
+    left: 0%;
+    transition: all 500ms;
+  }
+}
+
+.sub-nav {
+  text-align: center;
 }
