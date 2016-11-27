@@ -77,7 +77,7 @@ class BookEntries extends React.Component {
   }
 
   componentWillReceiveProps(nextProps) {
-    console.log(nextProps);
+    // console.log(nextProps);
     let categories = nextProps.book.getCategories();
     categories = this.sortCategories(categories);
     this.setState({
@@ -178,7 +178,7 @@ class BookEntries extends React.Component {
   }
 
   filterCategory(event) {
-    console.log(event.target.value);
+    // console.log(event.target.value);
     this.setState({ filteredCategory : event.target.value })
   }
 
@@ -249,7 +249,7 @@ class Balance extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      total : props.balance.reduce((prev, curr) => prev + curr.amount, 0),
+      total : this.computeTotal(props.balance),
       categories : this.sortCategories(props.book.getCategories()),
       filteredCategory : ``,
     }
@@ -261,6 +261,13 @@ class Balance extends React.Component {
     this.filterCategory = this.filterCategory.bind(this);
   }
 
+  computeTotal(balance) {
+    return balance.reduce((prev, curr) => {
+      if (curr.level === 0) return prev + curr.amount;
+      return prev;
+    }, 0)
+  }
+
   sortCategories(categories) {
     return categories.sort((a,b) => {
       if(a.toLowerCase() < b.toLowerCase()) return -1;
@@ -270,10 +277,11 @@ class Balance extends React.Component {
   }
 
   componentWillReceiveProps(nextProps) {
-    const total  = nextProps.balance.reduce((prev, curr) => prev + curr.amount, 0);
+    const total  = this.computeTotal(nextProps.balance);
+    // const total  = nextProps.balance.reduce((prev, curr) => prev + curr.amount, 0);
     const categories = this.sortCategories(nextProps.book.getCategories());
 
-    this.setState({total});
+    this.setState({total, categories});
   }
 
   renderCategoriesOptions() {
@@ -301,10 +309,16 @@ class Balance extends React.Component {
     // const total  = this.props.balance.reduce((prev, curr) => prev + curr.amount, 0);
     // this.setState({total});
     let maxChars = 0;
+    let balance = this.props.balance;
+    if (this.state.filteredCategory) balance = this.props.balance.sort((a,b) => {
+      if(a.category.toLowerCase() < b.category.toLowerCase()) return -1;
+      if(a.category.toLowerCase() > b.category.toLowerCase()) return 1;
+      return 0;
+    })
+    else balance = this.props.balance.sort((a,b) => b.amount - a.amount);
     this.props.balance.forEach(line => {
       if (Math.abs(line.amount).toFixed(0).length > maxChars) maxChars = Math.abs(line.amount).toFixed(0).length
     });
-    const balance = this.props.balance.sort((a,b) => b.amount - a.amount);
     return balance.map((line, i) => {
       if (line.level !== 0 && !this.state.filteredCategory || this.state.filteredCategory && line.category.indexOf(this.state.filteredCategory) !== 0) return;
       const classNames = `balance level-${line.level}`;
@@ -328,22 +342,29 @@ class Balance extends React.Component {
   }
 
   render() {
+    let totalLine = '';
+    if (!this.state.filteredCategory) {
+      totalLine = (
+        <Row className="balance total">
+          <Col xs={6} className="category">Total</Col>
+          <Col xs={6} className="amount">{this.state.total.toFixed(2)}</Col>
+        </Row>
+      );
+    }
     return (
       <div>
         <Grid>
           <Row className="sub-nav">
             <Col xs={12}>
                 <a onClick={this.onClickBack}><Glyphicon glyph="menu-left" /> Back</a>
-                {this.renderFilterCategory()}
+                &nbsp;|&nbsp;
+                Categorie : {this.renderFilterCategory()}
             </Col>
           </Row>
         </Grid>
         <Grid id="book-entries">
           {this.renderList()}
-          <Row className="balance total">
-            <Col xs={6} className="category">Total</Col>
-            <Col xs={6} className="amount">{this.state.total.toFixed(2)}</Col>
-          </Row>
+          {totalLine}
         </Grid>
       </div>
     )
@@ -356,7 +377,7 @@ class BalanceChart extends React.Component {
   }
   render() {
     // const pieData = this.props.balance;
-    console.log(this.props.balance);
+    // console.log(this.props.balance);
     var pieData = [{label: "Margarita", value: 20.0}, {label: "John", value: 55.0}, {label: "Tim", value: 25.0 }];
     return  (
     	<PieChart
@@ -430,9 +451,9 @@ class App extends React.Component {
     if (!file) {
       dialog.showOpenDialog(fileNames => {
         fileName = fileNames.pop();
-        console.log(fileName);
+        say(fileName);
         if (fileName === undefined){
-          console.log("Unable to open file");
+          say("Unable to open file");
           return;
         }
 
@@ -525,7 +546,10 @@ class App extends React.Component {
   }
 
   save(forceDialog = false) {
+    say(`###Saving file...`);
     if (!forceDialog && this.state.currentFileName) {
+      say(`saving automaticaly (no dialog), file name :`);
+      say(this.state.currentFileName);
       const oldContent = fs.readFileSync(this.state.currentFileName, `utf8`);
       const time = Date.now();
       const oldFileName = path.basename(this.state.currentFileName, `.json`) + time.toString() + `.json`;
@@ -535,13 +559,18 @@ class App extends React.Component {
       return;
     }
     dialog.showSaveDialog(fileName => {
-      if (!fileName) return;
+      if (!fileName) {
+        say(`No file name selected, aborting...`);
+        return;
+      }
+      say('writing file...');
       fs.writeFileSync(fileName, this.state.book.save());
       this.setState({
         currentFileName : fileName,
       });
       this.refresTitle();
     })
+    say(`End saving file`);
   }
 
   saveAs() {
@@ -555,7 +584,7 @@ class App extends React.Component {
   importEntries() {
     dialog.showOpenDialog(fileNames => {
       if (!fileNames){
-        console.log("Unable to open file");
+        say("Unable to open file");
         return;
       }
       const fileName = fileNames.pop();
@@ -575,13 +604,10 @@ class App extends React.Component {
   balance() {
     const balance = this.state.book.balanceCategories(this.state.startDate, this.state.endDate);
     this.setState({balance});
-    // this.state.book.balanceCategories();
-    // console.log(__dirname);
   }
 
   handleBalanceClickBack() {
     this.setState({ balance : null });
-    console.log(this.state.book);
   }
 
   handleChangeStart(date) {
