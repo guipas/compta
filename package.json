@@ -4,9 +4,10 @@
   "description": "Personnal Accounting From JSON Files",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "npm babel && electron .",
     "test": "./node_modules/.bin/mocha",
-    "less": "./node_modules/.bin/lessc ./style.less > style.css"
+    "less": "./node_modules/.bin/lessc ./style.less > style.css",
+    "babel": "./node_modules/.bin/babel app/src --out-dir app/dist"
   },
   "keywords": [
     "Electron",
@@ -18,6 +19,8 @@
   "author": "Guillaume Pasquet",
   "license": "CC0-1.0",
   "devDependencies": {
+    "babel-cli": "^6.18.0",
+    "babel-preset-react": "^6.16.0",
     "electron": "^1.4.1"
   },
   "dependencies": {
