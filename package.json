@@ -4,7 +4,7 @@
   "description": "Personnal Accounting From JSON Files",
   "main": "main.js",
   "scripts": {
-    "start": "npm babel && electron .",
+    "start": "npm run babel && electron .",
     "test": "./node_modules/.bin/mocha",
     "less": "./node_modules/.bin/lessc ./style.less > style.css",
     "babel": "./node_modules/.bin/babel app/src --out-dir app/dist"

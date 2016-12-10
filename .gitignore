@@ -5,3 +5,4 @@ test
 data
 .DS_Store
 compta-config.json
+npm-debug.log
