@@ -347,7 +347,13 @@ class DesktopApp {
 
   loadConfig() {
     say(`### Loading configuration...`);
-    const config = fs.readFileSync(path.join(__dirname, `compta-config.json`), `utf8`);
+    let config = null;
+    try { config = fs.readFileSync(path.join(__dirname, `compta-config.json`), `utf8`); }
+    catch (e) {
+      say(e);
+      this.config = {};
+    }
+
     say(config);
     if (config) {
       try { this.config = JSON.parse(config) }
@@ -427,5 +433,5 @@ desktopApp.loadConfig();
 // app.on('will-quit', this.saveConfig);
 const currentWindow = remote.getCurrentWindow();
 currentWindow.on(`close`, () => {
-  // desktopApp.saveConfig();
+  desktopApp.saveConfig();
 });
