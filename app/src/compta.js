@@ -1,3 +1,6 @@
+const Modal = require('react-modal');
+
+
 class Compta extends React.Component {
 
   constructor(props) {
@@ -6,13 +9,15 @@ class Compta extends React.Component {
     // const book = new Book();
     const startDate = moment();
     startDate.startOf(`year`);
-    const endDate = moment();
+    const endDate = moment().endOf("Day");
+    const dateFormat = props.dateFormat || 'YYYY-MM-DD';
 
     const book = props.book;
     this.state = {
       book,
       startDate,
       endDate,
+      dateFormat,
     };
 
     this.handleBalanceClickBack   = this.handleBalanceClickBack.bind(this);
@@ -21,10 +26,12 @@ class Compta extends React.Component {
     this.handleChangeStart        = this.handleChangeStart.bind(this);
     this.handleChangeEnd          = this.handleChangeEnd.bind(this);
     this.handleChangeItemCategory = this.handleChangeItemCategory.bind(this);
+    this.handleAddEntry           = this.handleAddEntry.bind(this);
   }
 
   componentWillReceiveProps(newProps) {
     say('-- React App will receive props...');
+    console.log(newProps.book);
     this.setState({ book : newProps.book });
   }
 
@@ -44,13 +51,13 @@ class Compta extends React.Component {
   handleChangeStart(date) {
     this.setState({
       startDate: date,
-      balance : this.state.book.balance(date, this.state.endDate)
+      balance : this.state.balance ? this.state.book.balance(date, this.state.endDate) : null,
     });
   }
   handleChangeEnd(date) {
     this.setState({
-      endDate: date,
-      balance : this.state.book.balance(this.state.startDate, date)
+      endDate: date.endOf('Day'),
+      balance : this.state.balance ? this.state.book.balance(this.state.startDate, date) : null,
     });
   }
 
@@ -65,16 +72,16 @@ class Compta extends React.Component {
       <Grid>
         <Row className="main-nav">
           <Col className="nav-date">
-            Période du
+            Period : from
             <DatePicker
-              dateFormat="DD/MM/YYYY"
+              dateFormat={this.state.dateFormat}
               selected={this.state.startDate}
               selectsStart    startDate={this.state.startDate}
               endDate={this.state.endDate}
               onChange={this.handleChangeStart} />
-            au
+            to
             <DatePicker
-              dateFormat="DD/MM/YYYY"
+              dateFormat={this.state.dateFormat}
               selected={this.state.endDate}
               selectsEnd    startDate={this.state.startDate}
               endDate={this.state.endDate}
@@ -85,8 +92,14 @@ class Compta extends React.Component {
     )
   }
 
-  render() {
+  handleAddEntry(label, amount, date) {
+    if (this.props.onAddEntry) {
+      this.props.onAddEntry(label, amount, date);
+    }
+  }
 
+  render() {
+    say('-- React App render');
     let balance = '';
     let entries = '';
 
@@ -97,6 +110,7 @@ class Compta extends React.Component {
         onClickBalance       : this.balance,
         book                 : this.state.book,
         onChangeItemCategory : this.handleChangeItemCategory,
+        dateFormat           : this.state.dateFormat,
       });
     }
     if (this.state.balance) {
@@ -115,6 +129,14 @@ class Compta extends React.Component {
         {this.renderNav()}
         {balance}
         {entries}
+        <Modal
+          isOpen={this.props.newEntryModalOpened}
+          contentLabel="Add new entry"
+          onRequestClose={this.props.requestCloseNewEntryModal}
+          shouldCloseOnOverlayClick={true}
+        >
+          <NewEntryForm dateFormat={this.state.dateFormat} onValidate={this.handleAddEntry}/>
+        </Modal>
       </div>
     )
   }

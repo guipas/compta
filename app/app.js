@@ -22,11 +22,16 @@ const ButtonToolbar  = ReactBootstrap.ButtonToolbar;
 const Button         = ReactBootstrap.Button;
 const OverlayTrigger = ReactBootstrap.OverlayTrigger;
 const Tooltip        = ReactBootstrap.Tooltip;
+const Form           = ReactBootstrap.Form;
+const FormGroup      = ReactBootstrap.FormGroup;
+const ControlLabel   = ReactBootstrap.ControlLabel;
+const FormControl    =   ReactBootstrap.FormControl;
 
 const DatePicker     = require(`react-datepicker`);
 const BookEntries    = require('./app/dist/book-entries');
 const Balance        = require('./app/dist/balance');
 const Compta         = require('./app/dist/compta.js');
+const NewEntryForm         = require('./app/dist/new-entry-form.js');
 // let mainBook      = new Book();
 
 const debug = true;
@@ -38,6 +43,35 @@ function say(something) {
 
 const setAppMenu = function setAppMenu() {
   this.template = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label : 'New',
+          click : () => this.newBook(),
+        },
+        {
+          label : 'Open',
+          click : () => this.openBook(),
+        },
+        {
+          label : 'Import From ING',
+          click : () => this.parseFromIng(),
+        },
+        {
+          label : 'Save',
+          click : () => this.save(),
+          accelerator: 'CmdOrCtrl+S',
+        },
+        {
+          label : 'Save as...',
+          click : () => this.saveAs(),
+        },
+        {
+          type: 'separator'
+        },
+      ]
+    },
     {
       label: 'Edit',
       submenu: [
@@ -73,6 +107,10 @@ const setAppMenu = function setAppMenu() {
     {
         label : 'Accounting',
         submenu : [
+          {
+            label : 'Add entry',
+            click : () => this.showAddEntryPrompt(),
+          },
           {
             label : 'Balance',
             click : () => this.balance(),
@@ -147,26 +185,7 @@ const setAppMenu = function setAppMenu() {
       // label: app.getName(),
       label: 'Compta',
       submenu: [
-        {
-          label : 'Open',
-          click : () => this.openBook(),
-        },
-        {
-          label : 'Import From ING',
-          click : () => this.parseFromIng(),
-        },
-        {
-          label : 'Save',
-          click : () => this.save(),
-          accelerator: 'CmdOrCtrl+S',
-        },
-        {
-          label : 'Save as...',
-          click : () => this.saveAs(),
-        },
-        {
-          type: 'separator'
-        },
+
         {
           role: 'services',
           submenu: []
@@ -191,25 +210,8 @@ const setAppMenu = function setAppMenu() {
         }
       ]
     })
-    // Edit menu.
-    this.template[1].submenu.push(
-      {
-        type: 'separator'
-      },
-      {
-        label: 'Speech',
-        submenu: [
-          {
-            role: 'startspeaking'
-          },
-          {
-            role: 'stopspeaking'
-          }
-        ]
-      }
-    )
     // Window menu.
-    this.template[3].submenu = [
+    this.template[5].submenu = [
       {
         label: 'Close',
         accelerator: 'CmdOrCtrl+W',
@@ -243,12 +245,15 @@ const setAppMenu = function setAppMenu() {
 class DesktopApp {
   constructor() {
     this.state = {
-      book: null,
-      balance: null,
-      currentFileName : false,
+      book                : null,
+      balance             : null,
+      currentFileName     : false,
+      newEntryModalOpened : false,
     }
 
     setAppMenu.bind(this)();
+
+    this.handleAddEntry = this.handleAddEntry.bind(this);
   }
 
   refreshTitle() {
@@ -266,8 +271,51 @@ class DesktopApp {
 
   renderApp() {
     say(`### Rendering React App...`);
-    ReactDOM.render(<Compta book={this.state.book} />, document.getElementById('app'));
+    const dateFormat = this.config.dateFormat || 'YYYY-MM-DD';
+    ReactDOM.render(
+      <Compta
+        book={this.state.book}
+        dateFormat={dateFormat}
+        newEntryModalOpened={this.state.newEntryModalOpened}
+        requestCloseNewEntryModal={this.hideAddEntryPrompt.bind(this)}
+        onAddEntry={this.handleAddEntry}
+      />
+      , document.getElementById('app'));
     say(`### done rendering`);
+  }
+
+  handleAddEntry(label, amount, date) {
+    console.log(label);
+    console.log(amount);
+    console.log(date.toDate());
+    const book = this.state.book;
+    book.addLine(label, date.toISOString(), amount, 'unknown');
+    console.log(book);
+    this.setState({
+      book,
+      newEntryModalOpened : false,
+    })
+  }
+
+  newBook() {
+    this.setState({
+      book : new Book(),
+      balance : false,
+      currentFileName : null,
+    })
+    this.refreshTitle();
+  }
+
+  showAddEntryPrompt() {
+    this.setState({
+      newEntryModalOpened : true,
+    })
+  }
+
+  hideAddEntryPrompt() {
+    this.setState({
+      newEntryModalOpened : false,
+    })
   }
 
   openBook(file) {
@@ -289,6 +337,7 @@ class DesktopApp {
           currentFileName : fileName,
         });
         this.refreshTitle();
+        this.saveConfig();
       });
     } else {
       if (!fs.existsSync(file)) {
@@ -305,6 +354,7 @@ class DesktopApp {
         currentFileName : file,
       });
       this.refreshTitle();
+      this.saveConfig();
     }
     say(`### End opening book`);
   }
@@ -361,7 +411,8 @@ class DesktopApp {
         say(e);
         this.config = {};
       }
-    }
+    } else { this.config = {} }
+
     if (this.config.lastOpenedFile) {
       say(`Opening Last File...`);
       this.openBook(this.config.lastOpenedFile);
@@ -431,7 +482,7 @@ const desktopApp = new DesktopApp();
 desktopApp.loadConfig();
 
 // app.on('will-quit', this.saveConfig);
-const currentWindow = remote.getCurrentWindow();
-currentWindow.on(`close`, () => {
-  desktopApp.saveConfig();
-});
+// const currentWindow = remote.getCurrentWindow();
+// currentWindow.on(`close`, () => {
+//   desktopApp.saveConfig();
+// });

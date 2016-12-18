@@ -50,7 +50,7 @@ class Balance extends React.Component {
 
   renderFilterCategory() {
     const options = this.renderCategoriesOptions(false);
-    options.unshift((<option key="all" value="">Tout</option>));
+    options.unshift((<option key="all" value="">All</option>));
     return (
       <select onChange={this.filterCategory}>
         {options}
@@ -82,7 +82,7 @@ class Balance extends React.Component {
         <Row key={i} className={classNames}>
           <Col xs={6} className="category">{line.category}</Col>
           <Col xs={6} className="amount">
-            {blanks}{ line.amount >= 0 ? "+" : "-" }{Math.abs(line.amount).toFixed(2)} ({line.ratioGain.toFixed(2)} / {line.ratioLoss.toFixed(2)})
+            {blanks}{ line.amount >= 0 ? "+" : "-" }{Math.abs(line.amount).toFixed(2)}
             {ratioBar}
           </Col>
         </Row>
