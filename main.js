@@ -14,14 +14,16 @@ function createWindow () {
     width: 480,
     height: 640,
     resizable : true,
+    title : "Compta"
     // maxWidth : 480,
   })
+  mainWindow.setTitle(require('./package.json').name);
 
   // and load the index.html of the app.
   mainWindow.loadURL(`file://${__dirname}/index.html`)
 
   // Open the DevTools.
-  mainWindow.webContents.openDevTools()
+  // mainWindow.webContents.openDevTools()
 
   // Emitted when the window is closed.
   mainWindow.on('closed', function () {

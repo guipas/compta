@@ -182,7 +182,6 @@ const setAppMenu = function setAppMenu() {
 
   if (process.platform === 'darwin') {
     this.template.unshift({
-      // label: app.getName(),
       label: 'Compta',
       submenu: [
 
